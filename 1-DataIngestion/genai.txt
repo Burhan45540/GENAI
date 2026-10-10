@@ -1,0 +1,11 @@
+Generative AI (GenAI) is a type of artificial intelligence that creates original text, images, videos, audio, and code in response to user prompts.
+
+How GenAI Works
+
+• Training Data: Models analyze massive amounts of existing data to learn underlying patterns and structures.
+• Neural Networks: Sophisticated deep learning algorithms—such as transformers and diffusion models—process prompts and generate new outputs.
+• Prompts: Users interact with the system using natural, everyday language instructions rather than complex code.
+
+Common Applications
+
+• Text & Code: Powers conversational assistants, document summarization, and software programming tools.
