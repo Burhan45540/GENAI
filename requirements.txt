@@ -11,3 +11,8 @@ langchain_huggingface
 sentence_transformers
 faiss-cpu
 langchain_chroma
+langchain_groq
+fastapi
+langserve
+uvicorn
+sse_starlette
