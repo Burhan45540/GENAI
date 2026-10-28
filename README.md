@@ -1,51 +1,219 @@
-# ask-my-pdf
+GenAI Learning Repository
 
-Chat with your PDFs **100% locally**. A small RAG (Retrieval-Augmented Generation) pipeline built with **Ollama**, **ChromaDB** and Python. No API keys, no cloud, and your documents never leave your machine.
+A collection of my hands-on practice, notes, and projects while learning
+Generative AI, LangChain, RAG, chatbots, vector databases, and AI
+agents.
 
-> Add a demo GIF here, e.g. `![demo](demo.gif)`
+This repository keeps my learning code organized by topic so I can
+revise concepts, experiment with examples, and build projects step by
+step.
 
-## How it works
+Repository Structure
 
-```
-PDF ──► extract text ──► split into chunks ──► embed (nomic-embed-text)
-                                                      │
-                                                      ▼
-                                              ChromaDB (vectors)
-                                                      │
-Question ──► embed ──► top-k similar chunks ◄─────────┘
-                              │
-                              ▼
-              chunks + question ──► Ollama LLM (llama3.2) ──► answer + page sources
-```
+GENAI/
+├── 1-DataIngestion/       # Loading data from different sources
+├── 2-DataTransformation/  # Cleaning and transforming documents/data
+├── 3-Embeddings/          # Text embeddings
+├── 4-Vectorstore/         # Vector stores and similarity search
+├── 5-Application/         # GenAI application practice
+├── 6-Langserve/           # Serving LangChain chains through an API
+├── 7-Chatbot/             # Chatbot and RAG chatbot notebooks
+├── 8-Agents/              # AI agents and the AI Data Analyst Agent
+├── .gitignore
+├── README.md
+└── requirements.txt
 
-1. **Extract** text from each page with `pypdf`
-2. **Chunk** it into ~800-character pieces with 150 characters of overlap
-3. **Embed** each chunk with an Ollama embedding model
-4. **Store** the vectors in a local ChromaDB database (cached, so a PDF is only indexed once)
-5. **Retrieve** the most relevant chunks for your question
-6. **Generate** an answer with a local LLM, told to use only the retrieved context
+Projects and Topics
 
+1. Data Ingestion
 
-Options:
+Practice loading data from different sources for use in GenAI
+applications.
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--chat-model` | `llama3.2` | Any Ollama chat model (`mistral`, `qwen2.5`, ...) |
-| `--embed-model` | `nomic-embed-text` | Any Ollama embedding model |
-| `--top-k` | `4` | Number of chunks retrieved per question |
-| `--db-dir` | `chroma_db` | Where the vector database is stored |
+2. Data Transformation
 
-## Limitations
+Practice preparing and transforming loaded data before passing it to
+later stages of a pipeline.
 
-- **Scanned PDFs** (images only) have no extractable text. Run OCR first, e.g. `ocrmypdf in.pdf out.pdf`.
-- One PDF per session.
-- Answer quality depends on the local model you choose and on chunk size. Tweak `CHUNK_SIZE`, `CHUNK_OVERLAP` and `TOP_K` at the top of `ask_my_pdf.py`.
+3. Embeddings
 
-## Ideas for next steps
+Explore how text can be represented as numerical vectors for semantic
+search and retrieval.
 
-- [ ] Multiple PDFs in one knowledge base
-- [ ] Streamlit web UI
-- [ ] Conversation memory for follow-up questions
+4. Vector Stores
 
+Practice storing embeddings and retrieving similar content through
+similarity search.
 
+5. GenAI Applications
 
+Experiments with building applications powered by language models.
+
+6. LangServe
+
+Practice exposing a LangChain chain through an API using FastAPI and
+LangServe.
+
+7. Chatbots and RAG
+
+Includes chatbot and retrieval-augmented generation (RAG) notebooks.
+
+A typical RAG workflow is:
+
+Load documents.
+
+Split documents into chunks.
+
+Create embeddings.
+
+Store embeddings in a vector store.
+
+Retrieve relevant chunks for a question.
+
+Send the question and retrieved context to the language model.
+
+Return an answer based on the retrieved context.
+
+8. AI Agents --- AI Data Analyst Agent
+
+The 8-Agents folder includes an AI Data Analyst Agent built with
+Streamlit, Pandas, LangChain, and Groq.
+
+Current features: - Upload a CSV dataset. - Preview the dataset. -
+View the number of rows and columns. - Inspect column names and data
+types. - View a statistical summary and missing-value count. - Ask
+questions about the dataset in natural language. - Use tools for dataset
+information, sums, averages, minimum/maximum values, and group-wise
+aggregations.
+
+Main application file: 8-Agents/app.py
+
+Setup
+
+1. Clone the repository
+
+git clone https://github.com/Burhan455540/GENAI.git
+cd GENAI
+
+2. Create and activate a virtual environment
+
+Using Python:
+
+python -m venv .venv
+
+On Windows Command Prompt:
+
+.venv\Scripts\activate
+
+On macOS/Linux:
+
+source .venv/bin/activate
+
+Alternatively, use your existing Conda environment.
+
+3. Install dependencies
+
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+
+4. Configure environment variables
+
+Create a .env file in the repository root for local development:
+
+GROQ_API_KEY=your_groq_api_key
+
+Keep API keys private. Do not commit .env or any file containing a
+real API key to GitHub.
+
+The application uses a Groq API key to access its language model.
+
+5. Run the AI Data Analyst Agent
+
+From the repository root:
+
+streamlit run 8-Agents/app.py
+
+If your environment or dependency versions differ, install the packages
+listed in requirements.txt and check the relevant project folder for
+any project-specific setup.
+
+Deploying the Streamlit App
+
+The AI Data Analyst Agent can be deployed using Streamlit Community
+Cloud.
+
+Sign in to Streamlit Community Cloud with your GitHub account.
+
+Select the Burhan455540/GENAI repository.
+
+Select the main branch.
+
+Set the main file path to 8-Agents/app.py.
+
+Choose a Python version supported by Streamlit Community Cloud and
+compatible with the project's dependencies.
+
+Add GROQ_API_KEY under the app's Secrets settings.
+
+Deploy the app.
+
+Example secret entry:
+
+GROQ_API_KEY = "your_actual_groq_api_key"
+
+Do not put the real key in this README or commit it to the repository.
+
+Technologies
+
+Python
+
+Pandas
+
+Streamlit
+
+LangChain
+
+LangServe
+
+FastAPI
+
+Groq
+
+Embeddings and vector stores
+
+Retrieval-Augmented Generation (RAG)
+
+The exact packages used by each project may vary; see requirements.txt
+and the code in each folder.
+
+Learning Goals
+
+Understand the building blocks of GenAI applications.
+
+Practice document loading, chunking, embeddings, and retrieval.
+
+Build chatbots and RAG pipelines.
+
+Learn how to serve chains through APIs.
+
+Build tool-using AI agents.
+
+Keep practice code and projects organized for revision and interview
+preparation.
+
+Security Notes
+
+Never upload API keys, passwords, or other secrets.
+
+Keep .env, virtual environments, cache folders, and local secret
+files out of version control.
+
+If an API key is accidentally published, revoke it and create a new
+one.
+
+Author
+
+Burhan
+
+This repository is a learning workspace and will continue to evolve as I
+explore more GenAI concepts and projects.
