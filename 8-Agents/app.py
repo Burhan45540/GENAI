@@ -597,7 +597,7 @@ if question:
     
 
 
-                    messages = [HumanMessage(content=question)]
+                    messages=st.session_state.agent_messages[-6:] + [HumanMessage(content=question)]
 
                     response =agents.invoke(
                         {"messages":messages}
