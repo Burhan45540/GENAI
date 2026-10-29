@@ -17,3 +17,4 @@ langserve
 uvicorn
 sse_starlette
 uv
+plotly
