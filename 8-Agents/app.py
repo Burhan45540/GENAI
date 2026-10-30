@@ -19,6 +19,8 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 import plotly.express as px
 
+from langchain.agents.middleware import SummarizationMiddleware
+
 
 
 
@@ -224,7 +226,7 @@ def create_data_tools(df):
         else:
             result = grouped.count()
 
-        return result.to_string()
+        return result.head(20).to_string()
 
 
     @tool
@@ -555,6 +557,13 @@ if (
         model=llm,
         tools=tools,
         checkpointer=checkpointer,
+        middleware=[
+        SummarizationMiddleware(
+            model=llm,
+            trigger=("tokens", 3000),
+            keep=("messages", 6)
+        )
+    ],
         system_prompt="""
         You are a helpful AI Data Analyst.
 
