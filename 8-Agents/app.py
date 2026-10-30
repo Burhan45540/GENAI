@@ -576,6 +576,9 @@ if (
             not rupee amounts. Underpricing is a percentage.
         12. Correlation does not mean causation. Never claim
             that one column causes another.
+        13. Answer ONLY the user's latest question. Use earlier messages
+            only to understand references like "them" or "that".
+            Never repeat answers to earlier questions.
         """
     )
 
