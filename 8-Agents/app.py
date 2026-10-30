@@ -286,7 +286,7 @@ def create_data_tools(df):
 
             return (
                 f"Matching rows : {len(result)}\n"
-                f"{result.head(50).to_string(index=False)}"
+                f"{result.head(10).to_string(index=False)}"
             )
 
 
@@ -560,8 +560,8 @@ if (
         middleware=[
         SummarizationMiddleware(
             model=llm,
-            trigger=("tokens", 2500),
-            keep=("messages", 4)
+            trigger=("tokens", 1500),
+            keep=("messages", 2)
         )
     ],
         system_prompt="""
