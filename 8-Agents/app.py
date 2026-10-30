@@ -41,7 +41,7 @@ if not groq_api_key:
     st.error("GROQ_API_KEY is missing. Please check your .env file.")
     st.stop()
 
-llm=ChatGroq(model="openai/gpt-oss-120b",api_key=groq_api_key)
+llm=ChatGroq(model="openai/gpt-oss-20b",api_key=groq_api_key)
 
 
 
