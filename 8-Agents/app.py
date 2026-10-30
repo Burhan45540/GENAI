@@ -560,8 +560,8 @@ if (
         middleware=[
         SummarizationMiddleware(
             model=llm,
-            trigger=("tokens", 3000),
-            keep=("messages", 6)
+            trigger=("tokens", 2500),
+            keep=("messages", 4)
         )
     ],
         system_prompt="""
