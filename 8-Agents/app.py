@@ -1,3 +1,27 @@
+# =====================================================================
+#  AI DATA ANALYST AGENT  (Streamlit + LangChain + Groq)
+# =====================================================================
+#  HOW THIS APP WORKS (big picture):
+#   1. User uploads a CSV file
+#   2. App shows a preview, summary and charts of that data
+#   3. An AI agent (LLM + tools) answers questions about the data
+#      by calling small Python functions (tools) that use pandas
+#
+#  FILE LAYOUT (read top to bottom):
+#   STEP 1  - Imports
+#   STEP 2  - Page settings (Streamlit)
+#   STEP 3  - Load API key & create the LLM (model)
+#   STEP 4  - Tools the AI agent can use (pandas calculations)
+#   STEP 5  - Chart helper functions (plotly)
+#   STEP 6  - Upload CSV & read it
+#   STEP 7  - Show dataset preview, metrics & info
+#   STEP 8  - Data visualization section (chart UI)
+#   STEP 9  - Create the AI agent (once per uploaded file)
+#   STEP 10 - Chat UI (user asks questions, agent answers)
+# =====================================================================
+
+
+
 import streamlit as st
 import os
 import pandas as pd
@@ -22,21 +46,16 @@ import plotly.express as px
 from langchain.agents.middleware import SummarizationMiddleware
 
 
-
-
-
+# PAGE SETTINGS 
 
 st.set_page_config(
     page_title="AI Data Analyst Agent",
     page_icon="📊",
     layout="wide",
 )
-st.title("📊 AI Data Analyst Agent")
 
-st.write(
-    "Upload your CSV file and ask questions about your data in natural language."
-)
 
+# MODEL INITIALIZATION
 groq_api_key=os.getenv("GROQ_API_KEY")
 
 if not groq_api_key:
@@ -46,9 +65,18 @@ if not groq_api_key:
 llm=ChatGroq(model="openai/gpt-oss-20b",api_key=groq_api_key)
 
 
+# TOOLS FOR THE AI AGENT
+
+def check_numeric(df, column):
+    if column not in df.columns:
+        return f"Column '{column}' does not exist. Available: {df.columns.tolist()}"
+    if not pd.api.types.is_numeric_dtype(df[column]):
+        return f"Column '{column}' is not numerical."
+    return None
 
 def create_data_tools(df):
 
+    
     @tool
     def get_dataset_info()->str:
 
@@ -61,54 +89,44 @@ def create_data_tools(df):
             f"Data types : {df.dtypes.to_string()}"
         )
 
+    
     @tool
     def calculate_sum(column:str)->str:
         """Calculate the sum of a numerical column.
         Provide the exact column name."""
 
-        if column not in df.columns:
-            return (
-                f"Column '{column}' does not exist. "
-                f"Available columns: {df.columns.tolist()}"
-            )
+        error=check_numeric(df,column)
 
-        if not pd.api.types.is_numeric_dtype(df[column]):
-            return f"Column '{column}' is not numerical."
+        if error:
+            return error
 
         result=df[column].sum()
 
         return f"Total Sum of Column {column} : {result}"
 
+   
     @tool
     def calculate_average(column:str)->str:
         """Calculate the average of a numerical column.
         Provide the exact column name."""
 
-        if column not in df.columns:
-            return (
-                f"Column '{column}' does not exist. "
-                f"Available columns: {df.columns.tolist()}"
-            )
-        if not pd.api.types.is_numeric_dtype(df[column]):
-            return f"Column '{column}' is not numerical."
+        error = check_numeric(df, column)
+        if error:
+            return error
 
 
         result=df[column].mean()
         return f"Average of Column {column} : {result}"
 
+    
     @tool
     def find_min_max(column: str) -> str:
         """Find the minimum and maximum values
         of a numerical column."""
 
-        if column not in df.columns:
-            return (
-                f"Column '{column}' does not exist. "
-                f"Available columns: {df.columns.tolist()}"
-            )
-
-        if not pd.api.types.is_numeric_dtype(df[column]):
-            return f"Column '{column}' is not numerical."
+        error = check_numeric(df, column)
+        if error:
+            return error
 
         minimum=df[column].min()
         maximum=df[column].max()
@@ -119,50 +137,44 @@ def create_data_tools(df):
         ) 
 
 
+   
     @tool
     def calculate_median(column:str)->str:
         """Find the median values of numerical column."""
         
-        if column not in df.columns:
-            return (
-                f"Column '{column}' does not exist. "
-                f"Available columns: {df.columns.tolist()}"
-            )
-
-        if not pd.api.types.is_numeric_dtype(df[column]):
-            return f"Column '{column}' is not numerical."
+        error = check_numeric(df, column)
+        if error:
+            return error
 
         result=df[column].median()
 
         return(f"Median value of column {column} : {result}")
 
     
+    
     @tool
     def calculate_std(column: str) -> str:
         """Calculate the sample standard deviation of a numerical column."""
 
-        if column not in df.columns:
-            return f"Column '{column}' does not exist. Available columns: {df.columns.tolist()}"
-
-        if not pd.api.types.is_numeric_dtype(df[column]):
-            return f"Column '{column}' is not numerical."
+        error = check_numeric(df, column)
+        if error:
+                return error
 
         result = df[column].std()
 
         return f"Standard deviation of {column}: {result}"
 
+    
     @tool
 
     def calculate_correlation(column1:str,column2:str)->str:
         """Calculate Pearson correlation between two numerical columns."""
 
         for column in [column1, column2]: 
-            if column not in df.columns: 
-                return f"Column '{column}' does not exist. Available columns: {df.columns.tolist()}" 
+            error = check_numeric(df, column)
+            if error:
+                    return error
             
-            if not pd.api.types.is_numeric_dtype(df[column]):
-                return f"Column '{column}' is not numerical."
-
         valid_data=df[[column1,column2]].dropna()
 
         if len(valid_data)<2:
@@ -177,12 +189,6 @@ def create_data_tools(df):
 
 
     
-
-    
-        
-
-
-
     @tool
     def group_aggregate(
         group_column:str,
@@ -229,6 +235,7 @@ def create_data_tools(df):
         return result.head(20).to_string()
 
 
+   
     @tool
 
     def filter_rows(column:str,operator:str,value:str)->str:
@@ -294,16 +301,15 @@ def create_data_tools(df):
                 return f"Could not apply filter: {e}"
 
 
+    
     @tool
     def get_top_rows(column:str,n:int=5)->str:
         """Return the top N rows based on a numerical column, in descending order."""
 
 
-        if column not in df.columns: 
-             return f"Column '{column}' does not exist. Available columns: {df.columns.tolist()}" 
-                    
-        if not pd.api.types.is_numeric_dtype(df[column]):
-            return f"Column '{column}' is not numerical."
+        error = check_numeric(df, column)
+        if error:
+            return error
 
         if n<1:
             return "N must be at least 1."
@@ -312,6 +318,7 @@ def create_data_tools(df):
 
         return result.to_string(index=False)
 
+    
     
     @tool
     def get_value_counts(column: str) -> str:
@@ -322,6 +329,7 @@ def create_data_tools(df):
         return df[column].value_counts(dropna=False).to_string()
 
 
+    
     @tool
     def get_missing_values() -> str:
         """Show the number of missing values in each column."""
@@ -351,7 +359,9 @@ def create_data_tools(df):
     ]
 
 
-#Charts
+# CHART HELPER FUNCTIONS (plotly)
+
+
 
 def bar_charts(df,category_column,value_column):
 
@@ -377,6 +387,7 @@ def bar_charts(df,category_column,value_column):
 
     st.plotly_chart(fig,use_container_width=True)
 
+
 def histogram(df,column):
 
     if column not in df.columns: 
@@ -388,6 +399,7 @@ def histogram(df,column):
     fig=px.histogram(df,x=column,title=f"Distribution of {column}")
 
     st.plotly_chart(fig,use_container_width=True)
+
 
 
 def line_chart(df,x,y):
@@ -410,6 +422,14 @@ def line_chart(df,x,y):
     st.plotly_chart(fig,use_container_width=True)
 
 
+# PAGE TITLE, UPLOAD CSV & READ IT
+
+
+st.title("📊 AI Data Analyst Agent")
+
+st.write(
+    "Upload your CSV file and ask questions about your data in natural language."
+)
 upload_file=st.file_uploader(
     "Upload your csv file",
     type=["csv"]
@@ -446,7 +466,7 @@ else:
         st.stop()
 
 
-
+# SHOW DATASET PREVIEW, METRICS & INFO
 
 st.success("CSV Upload Successfully")
 
@@ -478,6 +498,7 @@ with st.expander ("View Dataset Info"):
     )
 
 
+# DATA VISUALIZATION SECTION (chart UI)
 
 st.subheader("📊 Data Visualization")
 
@@ -485,6 +506,7 @@ chart_type = st.selectbox(
     "Choose chart type",
     ["Bar Chart", "Histogram", "Line Chart"]
 )
+
 
 if chart_type == "Bar Chart":
     category_column = st.selectbox(
@@ -507,6 +529,7 @@ if chart_type == "Bar Chart":
     else:
         st.warning("This dataset has no numerical columns.")
 
+
 elif chart_type == "Histogram":
     numeric_columns = df.select_dtypes(include="number").columns.tolist()
 
@@ -521,6 +544,7 @@ elif chart_type == "Histogram":
             histogram(df, column)
     else:
         st.warning("This dataset has no numerical columns.")
+
 
 elif chart_type == "Line Chart":
     columns = df.columns.tolist()
@@ -544,6 +568,8 @@ elif chart_type == "Line Chart":
     else:
         st.warning("This dataset has no numerical columns.")
 
+
+# CREATE THE AI AGENT
 
 tools = create_data_tools(df)
 
@@ -594,25 +620,20 @@ if (
     st.session_state.agent_file_id = file_id
 
 
-
-
-
-
-
-
-
-
+#  STEP 10: CHAT UI (ask questions about the data)
 
 st.info("💡 Please use the exact column names shown below when asking questions about your dataset.")
 
 st.subheader("Chat with your Data")
 
+# ----------  show previous messages ----------
 for message in st.session_state.get("chat_history",[]):
 
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 
+# ----------  get the new question ----------
 question = st.chat_input("Ask something about your dataset...")
 if question:
     st.session_state.chat_history.append(
@@ -625,6 +646,7 @@ if question:
     with st.chat_message("user"):
         st.markdown(question)
 
+    # ----------  agent answers ----------
     with st.chat_message("assistant"):
         with st.spinner("Analyzing your data..."):
                 
@@ -654,4 +676,5 @@ if question:
 
                 except Exception as e:
                     st.error(f"Something went wrong: {e}")
+
 
