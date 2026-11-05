@@ -18,3 +18,5 @@ uvicorn
 sse_starlette
 uv
 plotly
+pandas
+streamlit
