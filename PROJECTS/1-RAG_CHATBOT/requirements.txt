@@ -18,3 +18,8 @@ uvicorn
 sse_starlette
 uv
 plotly
+langchain-classic
+streamlit
+pymupdf
+easyocr 
+numpy

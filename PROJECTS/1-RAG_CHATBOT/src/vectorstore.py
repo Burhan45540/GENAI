@@ -3,53 +3,51 @@ from langchain_chroma import Chroma
 from langchain_core.documents import Document
 import hashlib
 import chromadb
+import logging
+from functools import lru_cache
 
+
+@lru_cache(maxsize=1)
 def get_embeddings():
 
     embeddings=HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
     return embeddings
 
-def create_vectorstore(chunks:list[Document],kb_id:str):
+def get_vectorstore(kb_id:str):
 
-    embeddings=get_embeddings()
 
-    vector_store=Chroma(embedding_function=embeddings,
+    vector_store=Chroma(embedding_function=get_embeddings(),
                         persist_directory="./chroma_db",
                         collection_name=kb_id)
 
+    return vector_store
+
+
+def create_vectorstore(chunks:list[Document],kb_id:str):
+
+
+    vector_store=get_vectorstore(kb_id=kb_id)
     vector_store.add_documents(chunks)
 
     return vector_store
 
-def get_vectorstore(kb_id:str):
 
-    embeddings=get_embeddings()
-
-    vector_store=Chroma(embedding_function=embeddings,
-                        persist_directory="./chroma_db",
-                        collection_name=kb_id)
-
-    return vector_store
-
-def get_retreiver(vectorstore:Chroma):
+def get_retreiver(vectorstore:Chroma,k:int=4):
 
     retreiver=vectorstore.as_retriever(
-        search_kwargs={"k":4}
+        search_kwargs={"k":k}
     )
 
     return retreiver
 
 
-def delete(kb_id:str):
-
-    embeddings=get_embeddings()
-
-    vectorstore=Chroma(collection_name=kb_id,
-        embedding_function=embeddings,
-        persist_directory="./chroma_db")
-
-    vectorstore.delete_collection()
+def delete(kb_id: str) -> None:
+    client = chromadb.PersistentClient(path="./chroma_db")
+    try:
+        client.delete_collection(kb_id)
+    except Exception:
+        logging.warning("Collection %s not found", kb_id)
 
 
 
@@ -59,11 +57,11 @@ def generate_kb_id(
         chunk_size:int=1000,
         chunk_overlap:int=200):
 
-    content=[
-        hashlib.sha256(doc.page_content.encode("utf-8") for doc in documents).hexdigest()
-        ]
+    content=sorted([
+        hashlib.sha256(doc.page_content.encode("utf-8") ).hexdigest()
+        for doc in documents
+        ])
 
-    content.sort()
 
     fingerprint=(
         "".join(content)
@@ -80,18 +78,14 @@ def generate_kb_id(
 
 
 
-def kb_id_exists(kb_id:str):
+def kb_id_exists(kb_id: str) -> bool:
+    client = chromadb.PersistentClient(path="./chroma_db")
+    try:
+        collection = client.get_collection(kb_id)
+        return collection.count() > 0
+    except Exception:
+        return False
 
-    client=chromadb.PersistentClient(path="./chromadb")
-
-    collections=client.list_collections()
-
-    for collection in collections:
-
-        if collection.name==kb_id:
-            return True
-
-    return False
 
 
 def get_create_vectorstore(chunks:list[Document],kb_id:str):
@@ -100,13 +94,13 @@ def get_create_vectorstore(chunks:list[Document],kb_id:str):
 
         print("Existing Knowledge Base Found!")
 
-        vectorstore=get_vectorstore(kb_id=kb_id)
+        return get_vectorstore(kb_id=kb_id)
 
     else:
          print("Creating New Knowledge Base!")
 
-         vectorstore=create_vectorstore(chunks=chunks,kb_id=kb_id)
+         return create_vectorstore(chunks=chunks,kb_id=kb_id)
 
-    return vectorstore
+    
 
 

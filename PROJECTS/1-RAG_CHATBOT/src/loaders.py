@@ -1,8 +1,45 @@
 from langchain_community.document_loaders import PyPDFLoader,Docx2txtLoader,TextLoader,WebBaseLoader
 from langchain_core.documents import Document
 import logging
+from pypdf import apply_configuration
+import easyocr
+import pymupdf,io
+import numpy as np
+from PIL import Image
+from pypdf.errors import LimitReachedError
 
 
+
+
+def convert_pdf_to_images(file_path):
+
+     pdf=pymupdf.open(file_path)
+
+     images=[]
+
+     for page in pdf:
+          pix=page.get_pixmap(dpi=300)
+          image=pix.tobytes("png")
+          images.append(image)
+
+     pdf.close()
+     return images
+
+reader=easyocr.Reader(['en'],gpu=False)
+def extract_text_from_image(image_bytes):
+
+     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+
+     image_array=np.array(image)
+
+     results=reader.readtext(image_array)
+     extracted_text=[]
+
+     for result in results:
+          text=result[1]
+          extracted_text.append(text)
+
+     return "\n".join(extracted_text)
 
 def load_pdf(file_path:str)->list[Document]:
     """
@@ -11,21 +48,44 @@ def load_pdf(file_path:str)->list[Document]:
 
     try:
         loader=PyPDFLoader(file_path=file_path)
+        
+        with apply_configuration(stream_parsing_work_maximum_count=10_000_000):
 
-        documents=loader.load()
+                documents=loader.load()
 
 
-        if not any(doc.page_content.strip() for doc in documents):
-                raise ValueError("PDF contains no extractable text.")
+                total_text = sum(len(doc.page_content.strip())
+                for doc in documents)
+
+                if total_text >= 500:
+                   return documents
+
+                print("Very little text extracted. Switching to OCR...")
 
         logging.info(f"PDF Loaded Successfully : {file_path}")
 
         return documents
 
-    except Exception as e:
-         logging.error(f"Error in loading pdf : {e}")
-         raise
+    except LimitReachedError:
+         print("Normal PDF extraction failed. Trying OCR...")
 
+
+    images=convert_pdf_to_images(file_path)
+
+    for page_num , image in enumerate(images):
+
+         text=extract_text_from_image(image)
+
+         if text.strip():
+              documents.append(
+                   Document(page_content=text,metadeta={"source": file_path,
+                        "page": page_num})
+              )
+
+    if not documents:
+         raise ValueError("PDF contains no extractable text, even after OCR.")
+
+    return documents
 
 def load_docx(file_path:str)->list[Document]:
 
