@@ -58,7 +58,7 @@ def get_rag_chain(retreiver):
 def get_vision_llm():
 
     llm = ChatGroq(
-        model="qwen/qwen3.8-27b",
+        model="openai/gpt-oss-20b",
         api_key=groq_api_key
     )
 
