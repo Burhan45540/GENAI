@@ -1,4 +1,3 @@
-
 from langchain_community.document_loaders import (
     PyPDFLoader,
     Docx2txtLoader,
@@ -32,7 +31,7 @@ from PIL import Image
 @lru_cache(maxsize=1)
 def get_reader():
 
-    logging.info("Initializing EasyOCR model...")
+    logging.info("Initializing EasyOCR model (first run downloads models)...")
 
     return easyocr.Reader(["en"], gpu=False)
 
@@ -48,15 +47,19 @@ def convert_pdf_to_images(file_path):
 
     images = []
 
-    for page in pdf:
+    try:
 
-        pix = page.get_pixmap(dpi=200)
+        for page in pdf:
 
-        image = pix.tobytes("png")
+            pix = page.get_pixmap(dpi=200)
 
-        images.append(image)
+            image = pix.tobytes("png")
 
-    pdf.close()
+            images.append(image)
+
+    finally:
+
+        pdf.close()
 
     return images
 
@@ -128,12 +131,20 @@ def load_pdf(
 
     documents = []
 
+    # Step 1: normal text extraction (any failure -> fall through to OCR)
     try:
 
         loader = PyPDFLoader(file_path=file_path)
 
-        with apply_configuration(stream_parsing_work_maximum_count=10_000_000):
+        try:
 
+            with apply_configuration(stream_parsing_work_maximum_count=10_000_000):
+
+                documents = loader.load()
+
+        except (AttributeError, TypeError):
+
+            # apply_configuration is not a context manager in this pypdf version
             documents = loader.load()
 
         logging.info(f"Normal PDF extraction completed: {file_path}")
@@ -142,7 +153,11 @@ def load_pdf(
 
         logging.warning("PDF text extraction limit reached. Switching to OCR.")
 
-    # Normal PDF: Return extracted text directly
+    except Exception as e:
+
+        logging.warning(f"Normal PDF extraction failed ({e}). Switching to OCR.")
+
+    # Step 2: normal PDF with enough text on every page -> return directly
     if not handwritten and documents and all(
         len(doc.page_content.strip()) >= 80
         for doc in documents
@@ -150,7 +165,9 @@ def load_pdf(
 
         return documents
 
-    # Convert PDF pages into images only when OCR is required
+    # Step 3: OCR is required, convert pages to images
+    logging.info("Running OCR on PDF pages...")
+
     images = convert_pdf_to_images(file_path)
 
     extracted_documents = []
@@ -159,30 +176,47 @@ def load_pdf(
 
         page_text = ""
 
-        # Handwritten document: use Vision LLM
-        if handwritten:
+        try:
 
-            if vision_llm is None:
+            # Handwritten document: use Vision LLM
+            if handwritten:
 
-                raise ValueError("Vision LLM is required for handwritten documents.")
+                if vision_llm is None:
 
-            page_text = ocr_vision_llm(image, vision_llm)
+                    raise ValueError(
+                        "Vision LLM is required for handwritten documents."
+                    )
 
-        else:
+                page_text = ocr_vision_llm(image, vision_llm)
 
-            # Get normal PDF extracted text for this page
-            if page_num < len(documents):
+            else:
 
-                page_text = documents[page_num].page_content.strip()
+                # Use normal extracted text for this page if it exists
+                if page_num < len(documents):
 
-            # If page has insufficient text, use EasyOCR
-            if len(page_text) < 80:
+                    page_text = documents[page_num].page_content.strip()
 
-                logging.info(f"Using EasyOCR for page {page_num + 1}")
+                # If page has insufficient text, use EasyOCR
+                if len(page_text) < 80:
 
-                page_text = extract_text_from_image(image)
+                    logging.info(
+                        f"Using EasyOCR for page {page_num + 1}/{len(images)}"
+                    )
 
-        if page_text.strip():
+                    page_text = extract_text_from_image(image)
+
+        except ValueError:
+
+            # configuration problem (missing vision LLM), do not hide it
+            raise
+
+        except Exception as e:
+
+            logging.error(f"OCR failed on page {page_num + 1}: {e}")
+
+            continue
+
+        if page_text and page_text.strip():
 
             extracted_documents.append(
                 Document(
