@@ -1,10 +1,12 @@
 from langchain_groq import ChatGroq
 from config import groq_api_key
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_classic.prompts import MessagesPlaceholder
+from langchain_core.prompts import MessagesPlaceholder
 from langchain_classic.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from functools import lru_cache
 
+@lru_cache(maxsize=1)
 def get_llm():
     llm=ChatGroq(model="openai/gpt-oss-20b",api_key=groq_api_key)
     return llm
@@ -51,3 +53,13 @@ def get_rag_chain(retreiver):
     )
 
     return rag_chain
+
+
+def get_vision_llm():
+
+    llm = ChatGroq(
+        model="qwen/qwen3.8-27b",
+        api_key=groq_api_key
+    )
+
+    return llm
