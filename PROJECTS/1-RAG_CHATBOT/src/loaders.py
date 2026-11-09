@@ -1,3 +1,4 @@
+
 from langchain_community.document_loaders import (
     PyPDFLoader,
     Docx2txtLoader,
@@ -21,6 +22,7 @@ import base64
 
 import numpy as np
 from PIL import Image
+
 
 # -----------------------------------
 # 1. Lazy Loading for EasyOCR
@@ -140,7 +142,15 @@ def load_pdf(
 
         logging.warning("PDF text extraction limit reached. Switching to OCR.")
 
-    # Convert all pages into images
+    # Normal PDF: Return extracted text directly
+    if not handwritten and documents and all(
+        len(doc.page_content.strip()) >= 80
+        for doc in documents
+    ):
+
+        return documents
+
+    # Convert PDF pages into images only when OCR is required
     images = convert_pdf_to_images(file_path)
 
     extracted_documents = []
@@ -190,7 +200,9 @@ def load_pdf(
     return extracted_documents
 
 
-
+# -----------------------------------
+# 6. Load DOCX
+# -----------------------------------
 
 
 def load_docx(file_path: str) -> list[Document]:
