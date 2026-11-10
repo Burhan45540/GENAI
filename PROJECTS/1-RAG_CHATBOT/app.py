@@ -1,15 +1,9 @@
-
 import streamlit as st
 import tempfile
 import os
 import logging
 
-from src.loaders import (
-    load_url,
-    load_pdf,
-    load_txt,
-    load_docx
-)
+from src.loaders import load_url, load_pdf, load_txt, load_docx
 
 from src.splitter import split_documents
 
@@ -17,22 +11,14 @@ from src.vectorstore import (
     generate_kb_id,
     get_create_vectorstore,
     get_retreiver,
-    delete
+    delete,
 )
 
-from src.chain import (
-    get_rag_chain,
-    get_vision_llm
-)
+from src.chain import get_rag_chain, get_vision_llm
 
 from langchain_core.messages import HumanMessage, AIMessage
 
-
-st.set_page_config(
-    page_title="DocuMind",
-    page_icon="📚",
-    layout="wide"
-)
+st.set_page_config(page_title="DocuMind", page_icon="📚", layout="wide")
 
 st.title("📚 DocuMind")
 st.caption("Chat with your documents using AI.")
@@ -52,10 +38,7 @@ with st.sidebar:
 
     st.header("Document Settings")
 
-    source_types = st.selectbox(
-        "Select Source",
-        ["PDF", "DOCX", "TXT", "Web URL"]
-    )
+    source_types = st.selectbox("Select Source", ["PDF", "DOCX", "TXT", "Web URL"])
 
     chunk_size = st.number_input("Chunk Size", value=1000)
     chunk_overlap = st.number_input("Chunk Overlap", value=200)
@@ -64,11 +47,14 @@ with st.sidebar:
         url = st.text_input("Enter Website URL : ")
 
     else:
-        uploaded_files = st.file_uploader(
-            "Upload Documents",
-            type=["pdf", "docx", "txt"],
-            accept_multiple_files=True
-        )
+        uploaded_files = st.file_uploader("Upload Documents",
+    type={
+        "PDF": ["pdf"],
+        "DOCX": ["docx"],
+        "TXT": ["txt"]
+    }[source_types],
+    accept_multiple_files=True
+)
 
     process_button = st.button("Process Documents")
 
@@ -125,11 +111,22 @@ if process_button:
                         raise ValueError("Please upload at least one document.")
 
                     for file in uploaded_files:
+                        
+                        expected_extension = {
+    "PDF": ".pdf",
+    "DOCX": ".docx",
+    "TXT": ".txt"
+}[source_types]
 
-                        # Temporary file creation
+                        extension = os.path.splitext(file.name)[1].lower()
+
+                        if extension != expected_extension:
+                            raise ValueError(
+                      f"You selected {source_types}, but uploaded {file.name}."
+    )
+    
                         with tempfile.NamedTemporaryFile(
-                            delete=False,
-                            suffix=os.path.splitext(file.name)[1]
+                            delete=False, suffix=os.path.splitext(file.name)[1]
                         ) as temp:
 
                             temp.write(file.getvalue())
@@ -175,36 +172,19 @@ if process_button:
 
                 raise ValueError("No readable content found in documents.")
 
-            st.success(
-                f"Successfully loaded {len(documents)} document pages."
-            )
-            
+            st.success(f"Successfully loaded {len(documents)} document pages.")
+
             with st.spinner("Creating Knowledge Base..."):
 
-                chunks = split_documents(
-                    documents,
-                    chunk_size,
-                    chunk_overlap
-                )
+                chunks = split_documents(documents, chunk_size, chunk_overlap)
 
-                kb_id = generate_kb_id(
-                    documents,
-                    chunk_size,
-                    chunk_overlap
-                )
+                kb_id = generate_kb_id(documents, chunk_size, chunk_overlap)
 
-                vectorstore = get_create_vectorstore(
-                    chunks,
-                    kb_id
-                )
+                vectorstore = get_create_vectorstore(chunks, kb_id)
 
-                retreiver = get_retreiver(
-                    vectorstore=vectorstore
-                )
+                retreiver = get_retreiver(vectorstore=vectorstore)
 
-                st.session_state.rag_chain = get_rag_chain(
-                    retreiver=retreiver
-                )
+                st.session_state.rag_chain = get_rag_chain(retreiver=retreiver)
 
                 if st.session_state.kb_id != kb_id:
                     st.session_state.chat_history = []
@@ -242,10 +222,7 @@ if question:
 
     else:
         response = st.session_state.rag_chain.invoke(
-            {
-                "input": question,
-                "chat_history": st.session_state.chat_history
-            }
+            {"input": question, "chat_history": st.session_state.chat_history}
         )
 
         answer = response["answer"]
@@ -263,7 +240,6 @@ if question:
                     st.write(doc.page_content[:300])
                     st.divider()
 
-        st.session_state.chat_history.extend([
-            HumanMessage(content=question),
-            AIMessage(content=answer)
-        ])
+        st.session_state.chat_history.extend(
+            [HumanMessage(content=question), AIMessage(content=answer)]
+        )
