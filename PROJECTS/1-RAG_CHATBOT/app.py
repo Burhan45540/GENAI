@@ -18,6 +18,41 @@ from src.chain import get_rag_chain, get_vision_llm
 
 from langchain_core.messages import HumanMessage, AIMessage
 
+import io
+import html
+from datetime import datetime
+
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 st.set_page_config(page_title="DocuMind", page_icon="📚", layout="wide")
 
 st.title("📚 DocuMind")
@@ -202,6 +237,77 @@ if process_button:
             st.error(f"Document loading failed: {e}")
 
 
+
+
+
+
+
+
+
+def generate_chat_pdf(chat_history):
+    buffer=io.BytesIO()
+    
+    pdf=SimpleDocTemplate(buffer,pagesize=A4,rightMargin=50,leftMargin=50,
+        topMargin=50,
+        bottomMargin=50)
+    
+    styles=getSampleStyleSheet()
+    
+    title_style=styles["Title"]
+    
+    user_style=ParagraphStyle(
+        "UserStyle",
+        parent=styles["Normal"],
+        textColor=colors.blue,
+        spaceAfter=10
+    )
+    assistant_style = ParagraphStyle(
+        "AssistantStyle",
+        parent=styles["Normal"],
+        textColor=colors.black,
+        spaceAfter=15
+    )
+    
+    content=[]
+    
+    content.append(Paragraph("DocuMind-Chat History",title_style))
+    content.append(Spacer(1, 10))
+    content.append(
+        Paragraph(
+            f"Generated on: {datetime.now().strftime('%d-%m-%Y %H:%M')}",
+            styles["Normal"]
+        )
+    )
+    content.append(Spacer(1, 25))
+    
+    
+    for message in chat_history:
+        message_text = html.escape(str(message.content))
+        message_text = message_text.replace("\n", "<br/>")
+        
+        if isinstance(message, HumanMessage):
+
+            content.append(
+                Paragraph(f"<b>You:</b> {message_text}", user_style)
+            )
+            
+        else:
+
+            content.append(
+                Paragraph(f"<b>DocuMind:</b> {message_text}", assistant_style)
+            )
+            
+    pdf.build(content)
+
+    buffer.seek(0)
+
+    return buffer
+        
+
+
+
+
+
 for message in st.session_state.chat_history:
 
     if isinstance(message, HumanMessage):
@@ -243,3 +349,14 @@ if question:
         st.session_state.chat_history.extend(
             [HumanMessage(content=question), AIMessage(content=answer)]
         )
+
+
+
+
+if st.session_state.chat_history:
+    pdf_file=generate_chat_pdf(st.session_state.chat_history)
+    
+    st.download_button(label="📥 Download Chat as PDF",
+        data=pdf_file,
+        file_name="DocuMind_Chat_History.pdf",
+        mime="application/pdf")
